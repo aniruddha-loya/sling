@@ -29,12 +29,16 @@ import org.slf4j.LoggerFactory;
  *  
  *  Sling calls this for all "create node" requests to its
  *  POST servlet. This reacts to POST on our ORDERS_PATH, and
- *  returns a somewhat long random hex string for the node name. 
+ *  returns a somewhat long random human readable string for the node name. 
  */
-@Component (enabled=false)
+@Component (enabled=true)
 @Service
-public class HexNodeNameGenerator implements NodeNameGenerator {
-    private static final Random random = new Random(System.currentTimeMillis());
+public class RandomStringNodeNameGenerator implements NodeNameGenerator {
+
+	private final String[] randomGrp1 = {"Pink", "Red", "Blue", "Green", "Black", "White"}; 
+	private final String[] randomGrp2 = {"Rabbit", "Elephant", "Tiger", "Antelope", "Gazelles"}; 
+	
+	private static final Random random = new Random(System.currentTimeMillis());
     private final Logger log = LoggerFactory.getLogger(getClass());
     
     /** @inheritDoc */
@@ -46,9 +50,9 @@ public class HexNodeNameGenerator implements NodeNameGenerator {
     {
         if(SlingbucksConstants.ORDERS_PATH.equals(parentPath)) {
             final StringBuilder name = new StringBuilder();
-            for(int i=0; i < 2; i++) {
-                name.append(Long.toHexString(random.nextLong()));
-            }
+            name.append(randomGrp1[random.nextInt(randomGrp1.length)]);
+            name.append(randomGrp2[random.nextInt(randomGrp2.length)]);
+            name.append(Integer.toString(random.nextInt(1000)));
             log.debug("Called for {} parent path, node name is {}", parentPath, name.toString());
             return name.toString();
         }
