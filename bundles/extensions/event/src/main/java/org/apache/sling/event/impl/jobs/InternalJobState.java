@@ -16,13 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.sling.event.jobs.consumer;
+package org.apache.sling.event.impl.jobs;
+
+import org.apache.sling.event.jobs.consumer.JobExecutor;
 
 /**
  * The state of the job after it has been processed by a {@link JobExecutor}.
- * @since 1.1
  */
-public enum JobState {
+public enum InternalJobState {
 
     SUCCEEDED,  // processing finished successfully
     FAILED,     // processing failed, can be retried

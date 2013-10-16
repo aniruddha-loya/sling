@@ -21,8 +21,6 @@ package org.apache.sling.event.jobs;
 import java.util.Calendar;
 import java.util.Set;
 
-import org.apache.sling.event.jobs.consumer.JobConsumer;
-
 import aQute.bnd.annotation.ProviderType;
 
 /**
@@ -56,13 +54,9 @@ public interface Job {
     String PROPERTY_JOB_QUEUE_NAME = "event.job.queuename";
 
     /**
-     * This property is set by the job handling to define the priority of this job
-     * execution.
-     * The property is evaluated by the job handling before starting the
-     * {@link JobConsumer} and sets the priority of the thread accordingly.
-     * For possible values see {@link JobUtil.JobPriority}.
-     * If this property is set by the client creating the job it's value is ignored
+     * @deprecated
      */
+    @Deprecated
     String PROPERTY_JOB_PRIORITY = "event.job.priority";
 
     /**
@@ -166,11 +160,29 @@ public interface Job {
      */
     String PROPERTY_FINISHED_DATE = "slingevent:finishedDate";
 
-    enum JobType {
-        QUEUED,
-        ACTIVE,
-        SUCCEEDED,
-        CANCELLED
+    /**
+     * This is an optional property containing a human readable title for
+     * the job
+     * @since 1.3
+     */
+    String PROPERTY_JOB_TITLE = "slingevent:jobTitle";
+
+    /**
+     * This is an optional property containing a human readable description for
+     * the job
+     * @since 1.3
+     */
+    String PROPERTY_JOB_DESCRIPTION = "slingevent:jobDescription";
+
+    /**
+     * The current job state.
+     * @since 1.3
+     */
+    enum JobState {
+        QUEUED,     // waiting in queue after adding or for restart after failing
+        ACTIVE,     // job is currently in processing
+        SUCCEEDED,  // processing finished successfully
+        CANCELLED,  // processing failed permanently
     };
 
     /**
@@ -180,16 +192,18 @@ public interface Job {
     String getTopic();
 
     /**
-     * Optional job name
-     * @return The job name or <code>null</code>
-     */
-    String getName();
-
-    /**
      * Unique job ID.
      * @return The unique job ID.
      */
     String getId();
+
+    /**
+     * Optional job name
+     * @return The job name or <code>null</code>
+     * @deprecated
+     */
+    @Deprecated
+    String getName();
 
     /**
      * Get the value of a property.
@@ -235,12 +249,10 @@ public interface Job {
     <T> T getProperty(String name, T defaultValue);
 
     /**
-     * This property is set by the job handling to define the priority of this job
-     * execution.
-     * The property is evaluated by the job handling before starting the
-     * {@link JobConsumer} and sets the priority of the thread accordingly.
-     * For possible values see {@link JobUtil.JobPriority}.
+     * This property is not supported anymore and always returns {@link JobUtil#JobPriority.NORM}.
+     * @deprecated
      */
+    @Deprecated
     JobUtil.JobPriority getJobPriority();
 
     /**
@@ -289,10 +301,10 @@ public interface Job {
     String getCreatedInstance();
 
     /**
-     * Get the job type
+     * Get the job state
      * @since 1.3
      */
-    JobType getJobType();
+    JobState getJobState();
 
     /**
      * If the job is cancelled or succeeded, this method will return the finish date.

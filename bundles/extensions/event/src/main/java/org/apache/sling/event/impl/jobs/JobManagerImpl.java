@@ -73,16 +73,14 @@ import org.apache.sling.event.impl.support.ScheduleInfoImpl;
 import org.apache.sling.event.jobs.Job;
 import org.apache.sling.event.jobs.JobBuilder;
 import org.apache.sling.event.jobs.JobManager;
-import org.apache.sling.event.jobs.JobUtil;
-import org.apache.sling.event.jobs.JobUtil.JobPriority;
 import org.apache.sling.event.jobs.JobsIterator;
+import org.apache.sling.event.jobs.NotificationConstants;
 import org.apache.sling.event.jobs.Queue;
 import org.apache.sling.event.jobs.QueueConfiguration;
 import org.apache.sling.event.jobs.ScheduledJobInfo;
 import org.apache.sling.event.jobs.Statistics;
 import org.apache.sling.event.jobs.TopicStatistics;
 import org.apache.sling.event.jobs.consumer.JobExecutor;
-import org.apache.sling.event.jobs.consumer.JobState;
 import org.apache.sling.event.jobs.jmx.QueuesMBean;
 import org.osgi.service.event.Event;
 import org.osgi.service.event.EventAdmin;
@@ -309,7 +307,7 @@ public class JobManagerImpl
             if ( logger.isDebugEnabled() ) {
                 logger.debug("Dropping job due to configuration of queue {} : {}", queueInfo.queueName, Utility.toString(job));
             }
-            this.finishJob(job, JobState.CANCELLED, false, -1);
+            this.finishJob(job, InternalJobState.CANCELLED, false, -1);
         } else if ( config.getType() == QueueConfiguration.Type.IGNORE ) {
             if ( !reassign ) {
                 if ( logger.isDebugEnabled() ) {
@@ -345,7 +343,7 @@ public class JobManagerImpl
                         if ( queue == null ) {
                             // this is just a sanity check, actually we can never get here
                             logger.warn("Ignoring event due to unknown queue type of queue {} : {}", queueInfo.queueName, Utility.toString(job));
-                            this.finishJob(job, JobState.CANCELLED, false, -1);
+                            this.finishJob(job, InternalJobState.CANCELLED, false, -1);
                         } else {
                             queues.put(queueInfo.queueName, queue);
                             ((QueuesMBeanImpl)queuesMBean).sendEvent(new QueueStatusEvent(queue, null));
@@ -484,21 +482,21 @@ public class JobManagerImpl
         } else {
             if ( EventUtil.isLocal(event) ) {
                 // job notifications
-                final String topic = (String)event.getProperty(JobUtil.NOTIFICATION_PROPERTY_JOB_TOPIC);
+                final String topic = (String)event.getProperty(NotificationConstants.NOTIFICATION_PROPERTY_JOB_TOPIC);
                 if ( topic != null ) { // this is just a sanity check
                     TopicStatisticsImpl ts = (TopicStatisticsImpl)this.topicStatistics.get(topic);
                     if ( ts == null ) {
                         this.topicStatistics.putIfAbsent(topic, new TopicStatisticsImpl(topic));
                         ts = (TopicStatisticsImpl)this.topicStatistics.get(topic);
                     }
-                    if ( event.getTopic().equals(JobUtil.TOPIC_JOB_CANCELLED) ) {
+                    if ( event.getTopic().equals(NotificationConstants.TOPIC_JOB_CANCELLED) ) {
                         ts.addCancelled();
-                    } else if ( event.getTopic().equals(JobUtil.TOPIC_JOB_FAILED) ) {
+                    } else if ( event.getTopic().equals(NotificationConstants.TOPIC_JOB_FAILED) ) {
                         ts.addFailed();
-                    } else if ( event.getTopic().equals(JobUtil.TOPIC_JOB_FINISHED) ) {
+                    } else if ( event.getTopic().equals(NotificationConstants.TOPIC_JOB_FINISHED) ) {
                         final Long time = (Long)event.getProperty(Utility.PROPERTY_TIME);
                         ts.addFinished(time == null ? -1 : time);
-                    } else if ( event.getTopic().equals(JobUtil.TOPIC_JOB_STARTED) ) {
+                    } else if ( event.getTopic().equals(NotificationConstants.TOPIC_JOB_STARTED) ) {
                         final Long time = (Long)event.getProperty(Utility.PROPERTY_TIME);
                         ts.addActivated(time == null ? -1 : time);
                     }
@@ -527,7 +525,6 @@ public class JobManagerImpl
                     // convert to integers (JCR supports only long...)
                     jobProperties.put(Job.PROPERTY_JOB_RETRIES, vm.get(Job.PROPERTY_JOB_RETRIES, Integer.class));
                     jobProperties.put(Job.PROPERTY_JOB_RETRY_COUNT, vm.get(Job.PROPERTY_JOB_RETRY_COUNT, Integer.class));
-                    jobProperties.put(Job.PROPERTY_JOB_PRIORITY, JobPriority.valueOf(vm.get(Job.PROPERTY_JOB_PRIORITY, JobPriority.NORM.name())));
                     if ( vm.get(Job.PROPERTY_JOB_PROGRESS_STEPS) != null ) {
                         jobProperties.put(Job.PROPERTY_JOB_PROGRESS_STEPS, vm.get(Job.PROPERTY_JOB_PROGRESS_STEPS, Integer.class));
                     }
@@ -803,7 +800,7 @@ public class JobManagerImpl
                         }
                     }
                 } else {
-                    this.finishJob(job, JobState.CANCELLED, true, -1);
+                    this.finishJob(job, InternalJobState.CANCELLED, true, -1);
                 }
             }
         } else {
@@ -979,11 +976,11 @@ public class JobManagerImpl
                 buf.append(ISO9075.encode(JobImpl.PROPERTY_FINISHED_STATE));
                 if ( type == QueryType.SUCCEEDED ) {
                     buf.append(" = '");
-                    buf.append(JobState.SUCCEEDED.name());
+                    buf.append(InternalJobState.SUCCEEDED.name());
                     buf.append("'");
                 } else if ( type == QueryType.CANCELLED ) {
                     buf.append(" = '");
-                    buf.append(JobState.CANCELLED.name());
+                    buf.append(InternalJobState.CANCELLED.name());
                     buf.append("'");
                 }
             } else {
@@ -1069,10 +1066,10 @@ public class JobManagerImpl
      * @param state The state of the processing
      */
     public void finishJob(final JobImpl job,
-                          final JobState state,
+                          final InternalJobState state,
                           final boolean keepJobInHistory,
                           final long duration) {
-        final boolean isSuccess = (state == JobState.SUCCEEDED);
+        final boolean isSuccess = (state == InternalJobState.SUCCEEDED);
         ResourceResolver resolver = null;
         try {
             resolver = this.resourceResolverFactory.getAdministrativeResourceResolver(null);
@@ -1084,7 +1081,7 @@ public class JobManagerImpl
                         final ValueMap vm = ResourceHelper.getValueMap(jobResource);
                         newPath = this.configuration.getStoragePath(job, isSuccess);
                         final Map<String, Object> props = new HashMap<String, Object>(vm);
-                        props.put(JobImpl.PROPERTY_FINISHED_STATE, isSuccess ? JobState.SUCCEEDED.name() : JobState.CANCELLED.name());
+                        props.put(JobImpl.PROPERTY_FINISHED_STATE, isSuccess ? InternalJobState.SUCCEEDED.name() : InternalJobState.CANCELLED.name());
                         if ( isSuccess ) {
                             // we set the finish date to start date + duration
                             final Date finishDate = new Date();
@@ -1244,7 +1241,7 @@ public class JobManagerImpl
             if ( logger.isDebugEnabled() ) {
                 logger.debug("Dropping job due to configuration of queue {} : {}", info.queueName, Utility.toString(jobTopic, jobName, jobProperties));
             }
-            Utility.sendNotification(this.eventAdmin, JobUtil.TOPIC_JOB_CANCELLED, jobTopic, jobName, jobProperties, null);
+            Utility.sendNotification(this.eventAdmin, NotificationConstants.TOPIC_JOB_CANCELLED, jobTopic, jobName, jobProperties, null);
         } else {
             // check for unique jobs
             if ( jobName != null && !this.lock(jobName) ) {
@@ -1332,7 +1329,6 @@ public class JobManagerImpl
         properties.put(Job.PROPERTY_JOB_QUEUE_NAME, info.queueConfiguration.getName());
         properties.put(Job.PROPERTY_JOB_RETRY_COUNT, 0);
         properties.put(Job.PROPERTY_JOB_RETRIES, info.queueConfiguration.getMaxRetries());
-        properties.put(Job.PROPERTY_JOB_PRIORITY, info.queueConfiguration.getPriority().name());
 
         properties.put(Job.PROPERTY_JOB_CREATED, Calendar.getInstance());
         properties.put(Job.PROPERTY_JOB_CREATED_INSTANCE, Environment.APPLICATION_ID);
@@ -1355,7 +1351,6 @@ public class JobManagerImpl
                 properties);
 
         // update property types - priority, add path and create job
-        properties.put(Job.PROPERTY_JOB_PRIORITY, info.queueConfiguration.getPriority());
         properties.put(JobImpl.PROPERTY_RESOURCE_PATH, path);
         return new JobImpl(jobTopic, jobName, jobId, properties);
     }
@@ -1369,7 +1364,7 @@ public class JobManagerImpl
             if ( logger.isDebugEnabled() ) {
                 logger.debug("Dropping job due to configuration of queue {} : {}", queueInfo.queueName, Utility.toString(job));
             }
-            this.finishJob(job, JobState.CANCELLED, false, -1); // DROP means complete removal
+            this.finishJob(job, InternalJobState.CANCELLED, false, -1); // DROP means complete removal
         } else {
             String targetId = null;
             if ( config.getType() != QueueConfiguration.Type.IGNORE ) {
@@ -1470,14 +1465,6 @@ public class JobManagerImpl
     @Override
     public Collection<ScheduledJobInfo> getScheduledJobs() {
         return this.jobScheduler.getScheduledJobs();
-    }
-
-    /**
-     * @see org.apache.sling.event.jobs.JobManager#getScheduledJob(java.lang.String)
-     */
-    @Override
-    public ScheduledJobInfo getScheduledJob(final String name) {
-        return this.jobScheduler.getScheduledJob(name);
     }
 
     public ScheduledJobInfo addScheduledJob(final String topic,

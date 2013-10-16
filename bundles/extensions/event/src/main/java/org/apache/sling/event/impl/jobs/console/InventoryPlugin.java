@@ -193,14 +193,9 @@ public class InventoryPlugin implements InventoryPrinter {
         if ( infos.size() == 0 ) {
             pw.print("No jobs currently scheduled");
         } else {
-            pw.println("<tr><th>Schedule</th><th>Job Topic</th><th>Job Name</th><th>Schedule Type</th><th>Schedules</th></tr>");
             for(final ScheduledJobInfo info : infos) {
-                pw.printf("Schedule : %s%n", info.getName());
+                pw.println("Schedule");
                 pw.printf("Job Topic< : %s%n", info.getJobTopic());
-                if ( info.getJobName() != null ) {
-                    pw.printf("Schedule : %s%n", info.getJobName());
-                }
-                pw.printf("ScheduleType : %s%n", info.getSchedules().iterator().next().getType().name());
                 pw.print("Schedules : ");
                 boolean first = true;
                 for(final ScheduleInfo si : info.getSchedules() ) {
@@ -209,13 +204,19 @@ public class InventoryPlugin implements InventoryPrinter {
                     }
                     first = false;
                     switch ( si.getType() ) {
-                    case WEEKLY : pw.printf("%s : %s:%s", si.getDayOfWeek(), si.getHourOfDay(), si.getMinuteOfHour());
+                    case YEARLY : pw.printf("YEARLY %s %s : %s:%s", si.getMonthOfYear(), si.getDayOfMonth(), si.getHourOfDay(), si.getMinuteOfHour());
                                   break;
-                    case DAILY : pw.printf("%s:%s", si.getHourOfDay(), si.getMinuteOfHour());
+                    case MONTHLY : pw.printf("MONTHLY %s : %s:%s", si.getDayOfMonth(), si.getHourOfDay(), si.getMinuteOfHour());
+                                  break;
+                    case WEEKLY : pw.printf("WEEKLY %s : %s:%s", si.getDayOfWeek(), si.getHourOfDay(), si.getMinuteOfHour());
+                                  break;
+                    case DAILY : pw.printf("DAILY %s:%s", si.getHourOfDay(), si.getMinuteOfHour());
                                  break;
-                    case HOURLY : pw.printf("%s", si.getMinuteOfHour());
+                    case HOURLY : pw.printf("HOURLY %s", si.getMinuteOfHour());
                                  break;
-                    default : pw.printf("%s", si.getAt());
+                    case CRON : pw.printf("CRON %s", si.getExpression());
+                                 break;
+                    default : pw.printf("AT %s", si.getAt());
                     }
                 }
                 pw.println();
@@ -252,7 +253,7 @@ public class InventoryPlugin implements InventoryPrinter {
             pw.printf("Max Parallel : %s%n", c.getMaxParallel());
             pw.printf("Max Retries : %s%n", c.getMaxRetries());
             pw.printf("Retry Delay : %s ms%n", c.getRetryDelayInMs());
-            pw.printf("Priority : %s%n", c.getPriority());
+            pw.printf("Priority : %s%n", c.getThreadPriority());
             pw.println();
         }
         if ( isEmpty ) {
@@ -388,7 +389,7 @@ public class InventoryPlugin implements InventoryPrinter {
             pw.printf("        \"maxParallel\" : %s,%n", c.getMaxParallel());
             pw.printf("        \"maxRetries\" : %s,%n", c.getMaxRetries());
             pw.printf("        \"retryDelayInMs\" : %s,%n", c.getRetryDelayInMs());
-            pw.printf("        \"priority\" : \"%s\"%n", c.getPriority());
+            pw.printf("        \"priority\" : \"%s\"%n", c.getThreadPriority());
             pw.println("      }");
             pw.print("    }");
         }

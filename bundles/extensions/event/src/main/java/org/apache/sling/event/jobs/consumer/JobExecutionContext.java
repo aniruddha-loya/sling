@@ -32,7 +32,7 @@ public interface JobExecutionContext {
      * @throws IllegalStateException If the job is not processed asynchronously
      *                               or if this method has already been called.
      */
-    void asyncProcessingFinished(final JobStatus status);
+    void asyncProcessingFinished(final JobExecutionResult result);
 
     /**
      * If a job is stoppable, it should periodically check this method
@@ -85,10 +85,51 @@ public interface JobExecutionContext {
 
     /**
      * Log a message.
+     * A job consumer can use this method during job processing to add additional information
+     * about the current state of job processing.
+     * As calling this method adds a significant overhead it should only
+     * be used to log a few statements per job processing. If a consumer wants
+     * to output detailed information about the processing it should persists it
+     * by itself and not use this method for it.
      * The message and the arguments are passed to the {@link java.text.MessageFormat}
      * class.
      * @param message A message
      * @param args Additional arguments
      */
     void log(final String message, final Object...args);
+
+    /**
+     * Build a result for the processing.
+     */
+    ResultBuilder result();
+
+    public interface ResultBuilder {
+
+        /**
+         * Add an optional processing message.
+         * This message can be viewed using {@link org.apache.sling.event.jobs.Job#getResultMessage()}.
+         */
+        ResultBuilder message(final String message);
+
+        /**
+         * The job processing finished successfully.
+         */
+        JobExecutionResult succeeded();
+
+        /**
+         * The job processing failed and might be retried.
+         */
+        JobExecutionResult failed();
+
+        /**
+         * The job processing failed and might be retried.
+         * @param retryDelayInMs The new retry delay in ms.
+         */
+        JobExecutionResult failed(final long retryDelayInMs);
+
+        /**
+         * The job processing failed permanently.
+         */
+        JobExecutionResult cancelled();
+    }
 }

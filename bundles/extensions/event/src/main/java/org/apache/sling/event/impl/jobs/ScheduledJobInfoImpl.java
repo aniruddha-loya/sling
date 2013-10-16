@@ -38,8 +38,6 @@ public class ScheduledJobInfoImpl implements ScheduledJobInfo, Serializable {
 
     private final String scheduleName;
 
-    private final String jobName;
-
     private final String jobTopic;
 
     private final Map<String, Object> jobProperties;
@@ -52,12 +50,10 @@ public class ScheduledJobInfoImpl implements ScheduledJobInfo, Serializable {
 
     public ScheduledJobInfoImpl(final JobSchedulerImpl jobScheduler,
             final String jobTopic,
-            final String jobName,
             final Map<String, Object> jobProperties,
             final String scheduleName) {
         this.jobScheduler = jobScheduler;
         this.scheduleName = scheduleName;
-        this.jobName = jobName;
         this.jobTopic = jobTopic;
         this.jobProperties = jobProperties;
     }
@@ -69,9 +65,8 @@ public class ScheduledJobInfoImpl implements ScheduledJobInfo, Serializable {
     }
 
     /**
-     * @see org.apache.sling.event.jobs.ScheduledJobInfo#getName()
+     * Get the schedule name
      */
-    @Override
     public String getName() {
         return this.scheduleName;
     }
@@ -105,14 +100,6 @@ public class ScheduledJobInfoImpl implements ScheduledJobInfo, Serializable {
     @Override
     public String getJobTopic() {
         return this.jobTopic;
-    }
-
-    /**
-     * @see org.apache.sling.event.jobs.ScheduledJobInfo#getJobName()
-     */
-    @Override
-    public String getJobName() {
-        return this.jobName;
     }
 
     /**

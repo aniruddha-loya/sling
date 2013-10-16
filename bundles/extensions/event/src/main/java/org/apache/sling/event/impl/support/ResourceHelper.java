@@ -23,6 +23,7 @@ import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.List;
@@ -63,6 +64,7 @@ public abstract class ResourceHelper {
     public static final String PROPERTY_SCHEDULE_SUSPENDED = "slingevent:scheduleSuspended";
 
     public static final String PROPERTY_JOB_ID = "slingevent:eventId";
+    @Deprecated
     public static final String PROPERTY_JOB_NAME = "event.job.id";
     public static final String PROPERTY_JOB_TOPIC = "event.job.topic";
 
@@ -77,6 +79,7 @@ public abstract class ResourceHelper {
         JobUtil.PROPERTY_JOB_RUN_LOCAL,
         JobUtil.PROPERTY_JOB_QUEUE_ORDERED,
         JobUtil.PROPERTY_NOTIFICATION_JOB,
+        Job.PROPERTY_JOB_PRIORITY,
         JobStatusNotifier.CONTEXT_PROPERTY_NAME,
         JobImpl.PROPERTY_DELAY_OVERRIDE,
         JobConsumer.PROPERTY_JOB_ASYNC_HANDLER,
@@ -168,7 +171,10 @@ public abstract class ResourceHelper {
                 if ( entry.getKey().equals(PROPERTY_SCHEDULE_INFO) ) {
                     final String[] infoArray = vm.get(entry.getKey(), String[].class);
                     if ( infoArray == null || infoArray.length == 0 ) {
-                        hasReadError.add(new Exception("Unable to deserialize property '" + entry.getKey() + "'"));
+                        if ( hasReadError == null ) {
+                            hasReadError = new ArrayList<Exception>();
+                        }
+                        hasReadError.add(new Exception("Unable to deserialize property '" + entry.getKey() + "' : " + entry.getValue()));
                     } else {
                         final List<ScheduleInfo> infos = new ArrayList<ScheduleInfo>();
                         for(final String i : infoArray) {
@@ -178,7 +184,10 @@ public abstract class ResourceHelper {
                             }
                         }
                         if ( infos.size() < infoArray.length ) {
-                            hasReadError.add(new Exception("Unable to deserialize property '" + entry.getKey() + "'"));
+                            if ( hasReadError == null ) {
+                                hasReadError = new ArrayList<Exception>();
+                            }
+                            hasReadError.add(new Exception("Unable to deserialize property '" + entry.getKey() + "' : " + Arrays.toString(infoArray)));
                         } else {
                             entry.setValue(infos);
                         }

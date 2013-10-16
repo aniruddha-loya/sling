@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import org.apache.sling.event.impl.support.ScheduleInfoImpl;
 import org.apache.sling.event.jobs.Job;
@@ -37,8 +38,6 @@ public class JobBuilderImpl implements JobBuilder {
 
     private final JobManagerImpl jobManager;
 
-    private String name;
-
     private Map<String, Object> properties;
 
     public JobBuilderImpl(final JobManagerImpl manager, final String topic) {
@@ -46,12 +45,6 @@ public class JobBuilderImpl implements JobBuilder {
         this.topic = topic;
     }
 
-
-    @Override
-    public JobBuilder name(final String name) {
-        this.name = name;
-        return this;
-    }
 
     @Override
     public JobBuilder properties(final Map<String, Object> props) {
@@ -66,16 +59,19 @@ public class JobBuilderImpl implements JobBuilder {
 
     @Override
     public Job add(final List<String> errors) {
-        return this.jobManager.addJob(this.topic, this.name, this.properties, errors);
+        return this.jobManager.addJob(this.topic, null, this.properties, errors);
     }
 
     @Override
+    public ScheduleBuilder schedule() {
+        return new ScheduleBuilderImpl(UUID.randomUUID().toString());
+    }
+
     public ScheduleBuilder schedule(final String name) {
         return new ScheduleBuilderImpl(name);
     }
 
-    public final class ScheduleBuilderImpl implements ScheduleBuilder,
-        WeekBuilder, DayBuilder, MinuteBuilder, DateBuilder, ScheduleBuilderAdder {
+    public final class ScheduleBuilderImpl implements ScheduleBuilder {
 
         private final String scheduleName;
 
@@ -88,44 +84,44 @@ public class JobBuilderImpl implements JobBuilder {
         }
 
         @Override
-        public WeekBuilder weekly(final int day, final int hour, final int minute) {
+        public ScheduleBuilder weekly(final int day, final int hour, final int minute) {
             schedules.add(ScheduleInfoImpl.WEEKLY(day, hour, minute));
             return this;
         }
 
         @Override
-        public DayBuilder daily(final int hour, final int minute) {
+        public ScheduleBuilder daily(final int hour, final int minute) {
             schedules.add(ScheduleInfoImpl.DAILY(hour, minute));
             return this;
         }
 
         @Override
-        public MinuteBuilder hourly(final int minute) {
+        public ScheduleBuilder hourly(final int minute) {
             schedules.add(ScheduleInfoImpl.HOURLY(minute));
             return this;
         }
 
         @Override
-        public DateBuilder at(final Date date) {
+        public ScheduleBuilder at(final Date date) {
             schedules.add(ScheduleInfoImpl.AT(date));
             return this;
         }
 
         @Override
-        public MinuteBuilder at(int minute) {
-            schedules.add(ScheduleInfoImpl.HOURLY(minute));
+        public ScheduleBuilder monthly(final int day, final int hour, final int minute) {
+            schedules.add(ScheduleInfoImpl.MONTHLY(day, hour, minute));
             return this;
         }
 
         @Override
-        public DayBuilder at(int hour, int minute) {
-            schedules.add(ScheduleInfoImpl.DAILY(hour, minute));
+        public ScheduleBuilder yearly(final int month, final int day, final int hour, final int minute) {
+            schedules.add(ScheduleInfoImpl.YEARLY(month, day, hour, minute));
             return this;
         }
 
         @Override
-        public WeekBuilder at(int day, int hour, int minute) {
-            schedules.add(ScheduleInfoImpl.WEEKLY(day, hour, minute));
+        public ScheduleBuilder cron(final String expression) {
+            schedules.add(ScheduleInfoImpl.CRON(expression));
             return this;
         }
 
@@ -136,7 +132,7 @@ public class JobBuilderImpl implements JobBuilder {
 
         @Override
         public ScheduledJobInfo add(final List<String> errors) {
-            return jobManager.addScheduledJob(topic, name, properties, scheduleName, suspend, schedules, errors);
+            return jobManager.addScheduledJob(topic, null, properties, scheduleName, suspend, schedules, errors);
         }
 
         @Override
